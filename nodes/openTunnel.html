@@ -1,0 +1,162 @@
+<!--
+ Copyright 2023 Andrea Trentin.
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+		 http://www.apache.org/licenses/LICENSE-2.0
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<script type="text/x-red" data-template-name="tunnel">
+    <div class="form-row">
+      <label for="node-config-input-name"><i class="fa fa-bookmark"></i> name</label>
+      <input type="text" id="node-config-input-name" placeholder="tunnel name" />
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-host"><i class="fa fa-bookmark"></i> Host</label>
+      <input type="text" id="node-config-input-host" placeholder="localhost" style="width: 40%;" />
+      <label for="node-config-input-port" style="margin-left: 10px; width: 35px; "> Port</label>
+      <input type="text" id="node-config-input-port" placeholder="22" style="width:45px">
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-username"><i class="fa fa-user"></i> Username</label>
+      <input type="text" id="node-config-input-username" placeholder="user" />
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
+      <input type="password" id="node-config-input-password">
+    </div>
+
+    <!-- File key SSH -->
+    <div class="form-row">
+      <label for="node-config-input-ssh-key-in"><i class="fa fa-lock"></i> SSH-Key file</label>
+      <input type="file" id="node-config-input-ssh-key-in">
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-selected-sshkey"><i class="fa fa-lock"></i> Selected SSH-Key file </label>
+      <input type="checkbox" disabled id="node-config-input-selected-sshkey">
+    </div>
+    <div class="form-row">
+      <textarea id="node-config-input-sshkey" style="display:none;"> </textarea>
+    </div>
+  <!-- / File key SSH -->
+
+    <div class="form-row">
+      <label for="node-config-input-srcAddr"><i class="fa fa-gear"></i> Source Address</label>
+      <input type="text" id="node-config-input-srcAddr" placeholder="localhost">
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-srcPort"><i class="fa fa-gear"></i> Source Port</label>
+      <input type="text" id="node-config-input-srcPort">
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-dstAddr"><i class="fa fa-gear"></i> Destination Address</label>
+      <input type="text" id="node-config-input-dstAddr" placeholder="localhost">
+    </div>
+    <div class="form-row">
+      <label for="node-config-input-dstPort"><i class="fa fa-gear"></i> Destination Port</label>
+      <input type="text" id="node-config-input-dstPort">
+    </div>
+    <div class="form-row">
+      <label for="node-input-autoclose"><i class="fa fa-gear"></i> Autoclose connection</label>
+      <input type="checkbox" checked="true" id="node-input-autoclose" placeholder="once" style="width: 10%; vertical-align: top;">
+
+    </div>
+</script>
+
+<!-- 
+  host: '129.152.11.1',
+  port: 22,
+  username: 'ubuntu',
+  privateKey: readFileSync('/Users/andrea/Downloads/ssh-key-2022-10-18.key'),
+-->
+
+<!-- 
+srcAddr: '127.0.0.1',
+srcPort: 8888,
+dstAddr: '127.0.0.1',
+dstPort: 1880, -->
+<script type="text/javascript">
+  RED.nodes.registerType('tunnel', {
+    category: 'config',
+    color: '#AAAA66',
+    defaults: {
+      name: { value: '', required: true },
+      host: { value: '' },
+      port: { value: '' },
+      username: { value: '', required: true },
+      password: { value: '' },
+      sshkey: { value: '' },
+      srcAddr: { value: '' },
+      srcPort: { value: '', required: true },
+      dstAddr: { value: '' },
+      dstPort: { value: '', required: true },
+      autoclose: { value: '' },
+    },
+    label: function () {
+      return this.name;
+    },
+    oneditprepare: function () {
+      const sshKeyFileIn = document.getElementById('node-config-input-ssh-key-in');
+      const sshKeyFile = document.getElementById('node-config-input-sshkey');
+
+      if (document.getElementById('node-config-input-sshkey').value) {
+        $('#node-config-input-selected-sshkey').prop('checked', true);
+      }
+
+      sshKeyFileIn.addEventListener('change', function () {
+        const fileReader = new FileReader();
+        fileReader.onload = function () {
+          // console.log(fileReader.result);
+          sshKeyFile.value = fileReader.result;
+        };
+        fileReader.readAsBinaryString(this.files[0]);
+      });
+    },
+  });
+</script>
+
+<script type="text/x-red" data-template-name="tunnel open">
+  <div class="form-row">
+    <label for="node-input-tunnel"><i class="fa fa-gears"></i> Cofigure Tunnel SSH</label>
+    <input type="text" id="node-input-tunnel">
+  </div>
+</script>
+
+<script type="text/x-red" data-help-name="open tunnel">
+  <h1>Tunnel SSH</h1>
+  <p>
+  <b>Node config:</b>
+  <ul>
+  <li><b>PUT</b> - Set <code>msg.payload.filedata</code> to the file contents you want pushed and will be uploaded to {GUID}.FileExtension. If you need more changes file request to github.</li>
+  <li><b>GET</b> - Set <code>msg.payload.filename</code> to get the file or will use Workdir + Filename in configuration. Leave configuration blank to set in code.</li>
+  <li><b>DELETE</b> - Set <code>msg.payload.filename</code> to delete the file or will use Workdir + Filename in configuration. Leave configuration blank to set in code.</li>
+  <li><b>LIST</b> - Uses the workdir</li>
+  </ul>
+  </p>
+</script>
+
+<script type="text/javascript">
+  RED.nodes.registerType('tunnel open', {
+    category: 'network',
+    color: '#AAAA66',
+    defaults: {
+      tunnel: { type: 'tunnel', required: true },
+      name: { value: '' },
+    },
+    inputs: 0,
+    outputs: 0,
+    icon: 'font-awesome/fa-lock',
+    label: function () {
+      var ftpNode = RED.nodes.node(this.ftp);
+      return this.name || 'tunnel SSH';
+    },
+    labelStyle: function () {
+      return this.name ? 'node_label_italic' : '';
+    },
+  });
+</script>

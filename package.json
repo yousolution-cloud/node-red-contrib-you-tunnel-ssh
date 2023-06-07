@@ -1,0 +1,40 @@
+{
+  "name": "@yousolution/node-red-contrib-you-tunnel-ssh",
+  "version": "0.0.2",
+  "description": "Module to create ssh tunnel for NODE-RED",
+  "license": "MIT",
+  "scripts": {
+    "update": "npm pack && mv yousolution-node-red-contrib-you-tunnel-ssh-$npm_package_version.tgz ./data && cd data && npm i yousolution-node-red-contrib-you-tunnel-ssh-$npm_package_version.tgz && docker-compose restart",
+    "test": "mocha 'test/**/*.spec.js'",
+    "coverage": "nyc npm run test"
+  },
+  "keywords": [
+    "node-red",
+    "ssh",
+    "tunnel",
+    "integration",
+    "youSolution.Cloud"
+  ],
+  "author": "Andrea Trentin <andrea.trentin@yousolution.cloud>",
+  "node-red": {
+    "version": ">=2.0.0",
+    "nodes": {
+      "openTunnel": "/nodes/openTunnel.js"
+    }
+  },
+  "dependencies": {
+    "ssh2": "^1.13.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yousolution-cloud/node-red-contrib-you-tunnel-ssh.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "node-red": "^3.0.2",
+    "node-red-node-test-helper": "^0.3.1"
+  }
+}
