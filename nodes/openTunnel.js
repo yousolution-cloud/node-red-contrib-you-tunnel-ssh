@@ -14,10 +14,11 @@
  * limitations under the License.
  **/
 const { createTunnel } = require('../lib/tunnel-ssh');
+const enableDestroy = require('server-destroy');
+
 module.exports = function (RED) {
   'use strict';
 
-  let counter = 0;
   let server = null;
   let client = null;
   // var ftp = require('ftp');
@@ -36,9 +37,9 @@ module.exports = function (RED) {
       keyData = n.sshkey;
     }
 
-    console.log('=====');
-    console.log(n.autoclose);
-    console.log('=====');
+    // console.log('=====');
+    // console.log(n.autoclose);
+    // console.log('=====');
 
     this.options = {
       name: n.name || 'default',
@@ -53,6 +54,7 @@ module.exports = function (RED) {
       dstAddr: n.dstAddr || 'localhost',
       dstPort: n.dstPort,
       autoclose: n.autoclose || true,
+      reconnectTimeout: 3000,
     };
   }
 
@@ -69,82 +71,26 @@ module.exports = function (RED) {
 
     // const globalContext = this.context().global;
 
-    let lock = 0;
+    if (!this.tunnelConfig) {
+      this.error('missing tunnel SSH configuration');
+      return;
+    }
 
-    (async () => {
-      if (this.tunnelConfig) {
-        const node = this;
+    let node = this;
+    // Hack for async function
+    console.log('A');
+    setTimeout(async () => {
+      console.log('B');
+      await connect(node);
+    });
 
-        node.status({ fill: 'red', shape: 'ring', text: 'disconnected' });
-
-        /*Tunnel SSH options*/
-        //  node.tunnelConfig.options.host
-        //  node.tunnelConfig.options.port
-        //  node.tunnelConfig.options.username
-        //  node.tunnelConfig.options.password
-        //  node.tunnelConfig.options.keyData
-
-        //  node.tunnelConfig.options.srcAddr
-        //  node.tunnelConfig.options.scrPort
-        //  node.tunnelConfig.options.dstAddr
-        //  node.tunnelConfig.options.dstPort
-
-        //  node.tunnelConfig.options.autoclose
-
-        const forwardOptions = {
-          srcAddr: node.tunnelConfig.options.srcAddr,
-          srcPort: parseInt(node.tunnelConfig.options.srcPort),
-          dstAddr: node.tunnelConfig.options.dstAddr,
-          dstPort: parseInt(node.tunnelConfig.options.dstPort),
-        };
-
-        const tunnelOptions = {
-          autoClose: false, //node.tunnelConfig.options.autoclose,
-        };
-
-        const serverOptions = {
-          port: parseInt(node.tunnelConfig.options.srcPort),
-        };
-
-        let sshOptions = {
-          host: node.tunnelConfig.options.host,
-          port: parseInt(node.tunnelConfig.options.port),
-          username: node.tunnelConfig.options.username,
-          password: node.tunnelConfig.options.password,
-          // privateKey: readFileSync('/Users/andrea/Downloads/ssh-key-2022-10-18.key'),
-        };
-
-        if (node.tunnelConfig.options.keyData) {
-          delete sshOptions.password;
-          sshOptions = { ...{ privateKey: node.tunnelConfig.options.keyData }, ...sshOptions };
-        }
-
-        try {
-          counter++;
-          console.log(`Counter ${counter}`);
-
-          await clearServerConnection();
-          await clearClientConnection();
-          [server, client] = await createTunnel(tunnelOptions, serverOptions, sshOptions, forwardOptions, (err) => {
-            // throw err;
-            node.error(err, { payload: 'Error in tunnel ssh' });
-            node.status({ fill: 'red', shape: 'dot', text: 'Error' });
-          });
-          node.status({ fill: 'green', shape: 'dot', text: 'Connect' });
-        } catch (err) {
-          console.log(err);
-
-          node.error(err, { payload: 'Open tunnel ssh error', message: err.message });
-          node.status({ fill: 'red', shape: 'dot', text: 'Error' });
-        }
-
-        // console.log('************');
-        // console.log('Tunnel SSH tunnelConfig: ' + JSON.stringify(this.tunnelConfig));
-        // console.log('************');
-      } else {
-        this.error('missing tunnel SSH configuration');
-      }
-    })();
+    node.on('input', async (msg, send, done) => {
+      console.log('On Message');
+      console.log(msg);
+      setTimeout(async () => {
+        await connect(node);
+      }, node.tunnelConfig.options.reconnectTimeout);
+    });
   }
 
   async function clearServerConnection() {
@@ -154,38 +100,110 @@ module.exports = function (RED) {
         return resolve();
       }
 
-      server.close(() => {
+      enableDestroy(server);
+
+      if (!server.listening) {
         server = null;
         return resolve();
-      });
+      }
+
+      server.destroy();
+      return resolve();
+
+      // server.close(() => {
+      //   server = null;
+      //   console.log('X4');
+      //   return resolve();
+      // });
+      // server.unref();
     });
   }
 
   async function clearClientConnection() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!client) {
         return resolve();
       }
       client.end().destroy();
       client = null;
       return resolve();
-      // console.log('2');
       // c.on('close', () => {
-      //   console.log('CC');
       //   console.log('Client closed');
       //   return resolve();
       // });
       // c.on('end', () => {
-      //   console.log('CE');
       //   console.log('Client closed');
       //   return resolve();
       // });
       // c.on('error', () => {
-      //   console.log('CD');
       //   console.log('Client closed with error');
       //   return resolve();
       // });
     });
+  }
+
+  async function connect(node) {
+    node.status({ fill: 'red', shape: 'ring', text: 'disconnected' });
+
+    /*Tunnel SSH options*/
+    //  node.tunnelConfig.options.host
+    //  node.tunnelConfig.options.port
+    //  node.tunnelConfig.options.username
+    //  node.tunnelConfig.options.password
+    //  node.tunnelConfig.options.keyData
+
+    //  node.tunnelConfig.options.srcAddr
+    //  node.tunnelConfig.options.scrPort
+    //  node.tunnelConfig.options.dstAddr
+    //  node.tunnelConfig.options.dstPort
+
+    //  node.tunnelConfig.options.autoclose
+
+    const forwardOptions = {
+      srcAddr: node.tunnelConfig.options.srcAddr,
+      srcPort: parseInt(node.tunnelConfig.options.srcPort),
+      dstAddr: node.tunnelConfig.options.dstAddr,
+      dstPort: parseInt(node.tunnelConfig.options.dstPort),
+    };
+
+    const tunnelOptions = {
+      autoClose: false, //node.tunnelConfig.options.autoclose,
+    };
+
+    const serverOptions = {
+      port: parseInt(node.tunnelConfig.options.srcPort),
+    };
+
+    let sshOptions = {
+      host: node.tunnelConfig.options.host,
+      port: parseInt(node.tunnelConfig.options.port),
+      username: node.tunnelConfig.options.username,
+      password: node.tunnelConfig.options.password,
+      // privateKey: readFileSync('/Users/andrea/Downloads/ssh-key-2022-10-18.key'),
+    };
+
+    if (node.tunnelConfig.options.keyData) {
+      delete sshOptions.password;
+      sshOptions = { ...{ privateKey: node.tunnelConfig.options.keyData }, ...sshOptions };
+    }
+
+    try {
+      await clearClientConnection();
+      await clearServerConnection();
+      [server, client] = await createTunnel(tunnelOptions, serverOptions, sshOptions, forwardOptions, (err) => {
+        // throw err;
+        node.error(err, { payload: 'Error in tunnel ssh' });
+        node.status({ fill: 'red', shape: 'dot', text: 'Error' });
+      });
+      node.status({ fill: 'green', shape: 'dot', text: 'Connect' });
+    } catch (err) {
+      node.error(err, { payload: 'Open tunnel ssh error', message: err.message });
+      node.status({ fill: 'red', shape: 'dot', text: 'Error' });
+    }
+
+    // console.log('************');
+    // console.log('Tunnel SSH tunnelConfig: ' + JSON.stringify(this.tunnelConfig));
+    // console.log('************');
   }
 
   RED.nodes.registerType('tunnel open', TunnelOpen);

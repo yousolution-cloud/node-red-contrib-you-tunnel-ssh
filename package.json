@@ -1,6 +1,6 @@
 {
   "name": "@yousolution/node-red-contrib-you-tunnel-ssh",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Module to create ssh tunnel for NODE-RED",
   "license": "MIT",
   "scripts": {
@@ -23,6 +23,7 @@
     }
   },
   "dependencies": {
+    "server-destroy": "^1.0.1",
     "ssh2": "^1.13.0"
   },
   "repository": {
